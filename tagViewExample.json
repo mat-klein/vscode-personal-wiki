@@ -1,0 +1,29 @@
+{   
+    "tagSubscriptions":[
+        {
+            "tagSubLabel": "tag1|tag2",
+            "tagSubChildren":[
+                {
+                    "elementLabel":"eleLabel",
+                    "elementPath":"elePath",
+                    "parentDir": "ParentDir"
+                },
+                {
+                    "elementLabel":"eleLabel1",
+                    "elementPath":"elePath1",
+                    "parentDir": "ParentDir1"
+                }
+            ]
+        },
+        {
+            "tagSubLabel": "tagNew",
+            "tagSubChildren":[
+                {
+                    "elementLabel":"eleLabel3",
+                    "elementPath":"elePath3",
+                    "parentDir": "ParentDir3"
+                }
+            ]
+        }
+    ]
+}

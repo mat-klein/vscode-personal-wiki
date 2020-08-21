@@ -1,6 +1,6 @@
 {
-	"name": "personalWiki",
-	"displayName": "Personal Wiki",
+	"name": "personalwiki",
+	"displayName": "PersonalWiki",
 	"description": "Personal Wiki with Markdown",
 	"version": "0.0.1",
 	"engines": {
@@ -10,16 +10,325 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:extension.helloWorld"
+		"onStartupFinished"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"configuration": {
+			"title": "PersonalWiki",
+			"properties": {
+				"personalwiki.general.wikiPath": {
+					"type": "string",
+					"default": "",
+					"markdownDescription": "your personal wiki path",
+					"readOnly": true
+				},
+				"personalwiki.general.wikiTags": {
+					"type": "string",
+					"default": "[default]",
+					"markdownDescription": "list of subscribed tags",
+					"readOnly": true
+				},
+				"personalwiki.general.pageTagIdentifier": {
+					"type": "string",
+					"default": "## Wikipage Tags",
+					"markdownDescription": "identifier for tags of wikipage (include tags in markdown code-block '``')",
+					"readOnly": true
+				},
+				"personalwiki.general.defaultTemplate": {
+					"type": "string",
+					"default": "DefaultTemp",
+					"markdownDescription": "default template is inserted on new pages",
+					"readOnly": true
+				}
+			}
+		},
+		"configurationDefaults": {
+			"[markdown]": {
+				"editor.wordWrap": "off",
+				"editor.quickSuggestions": true
+			}
+		},
 		"commands": [
 			{
-				"command": "extension.helloWorld",
-				"title": "Hello World"
+				"command": "pw.SelectWiki",
+				"title": "open a personal wiki",
+				"category": "pw.general",
+				"icon": "$(folder-opened)"
+			},
+			{
+				"command": "pw.LastWikiPage",
+				"title": "last Wikipage",
+				"category": "pw.navigation",
+				"icon": "$(arrow-left)"
+			},
+			{
+				"command": "pw.NextWikiPage",
+				"title": "next Wikipage",
+				"category": "pw.navigation",
+				"icon": "$(arrow-right)"
+			},
+			{
+				"command": "pw.Cut",
+				"title": "Cut",
+				"category": "pw.general"
+			},
+			{
+				"command": "pw.Paste",
+				"title": "Paste",
+				"category": "pw.general"
+			},
+			{
+				"command": "pw.Rename",
+				"title": "Rename",
+				"category": "pw.general"
+			},
+			{
+				"command": "pw.Delete",
+				"title": "Delete",
+				"category": "pw.general"
+			},
+			{
+				"command": "pw.NewPage",
+				"title": "New Wikipage",
+				"category": "pw.general",
+				"icon": "$(file-add)"
+			},
+			{
+				"command": "pw.NewChildPage",
+				"title": "New child Wikipage",
+				"category": "pw.general",
+				"icon": "$(files)"
+			},
+			{
+				"command": "pw.NewFolder",
+				"title": "New Wikifolder",
+				"category": "pw.general",
+				"icon": "$(file-directory-create)"
+			},
+			{
+				"command": "pw.SubscribeTags",
+				"title": "add tag subscription",
+				"category": "pw.tags",
+				"icon": "$(diff-insert)"
+			},
+			{
+				"command": "pw.UnsubscribeTags",
+				"title": "delete tag subscription",
+				"category": "pw.tags",
+				"icon": "$(diff-remove)"
+			},
+			{
+				"command": "pw.UpdateTagIdentifier",
+				"title": "update identifier for tags",
+				"category": "pw.tags"
+			},
+			{
+				"command": "pw.Search",
+				"title": "search personal wiki",
+				"category": "pw.search",
+				"icon": "$(search)"
+			},
+			{
+				"command": "pw.NewDefaultTemplate",
+				"title": "set new default template",
+				"category": "pw.templates"
+			},
+			{
+				"command": "pw.AddTemplate",
+				"title": "Add Template",
+				"category": "pw.templates"
+			},
+			{
+				"command": "pw.InsertTemplate",
+				"title": "Insert Template",
+				"category": "pw.templates"
+			},
+			{
+				"command": "pw.DeleteTemplate",
+				"title": "Delete Template",
+				"category": "pw.templates"
+			},
+			{
+				"command": "pw.InsertImage",
+				"title": "Insert Imagelink",
+				"category": "pw.image"
+			},
+			{
+				"command": "pw.InsertWikiLink",
+				"title": "Insert Wikilink",
+				"category": "pw.link"
+			},
+			{
+				"command": "pw.ImportMarkdownFiles",
+				"title": "Import markdown files",
+				"category": "pw.io"
+			},
+			{
+				"command": "pw.ExportMarkdownFiles",
+				"title": "Export markdown files",
+				"category": "pw.io"
+			},
+			{
+				"command": "pw.ExportPersonalWiki",
+				"title": "Export Personal Wiki",
+				"category": "pw.io"
+			},
+			{
+				"command": "pw.TestCommand",
+				"title": "TEST COMMAND",
+				"category": "pw.test"
 			}
-		]
+		],
+		"menus": {
+			"view/item/context": [
+				{
+					"command": "pw.NewPage",
+					"group": "0_create@1"
+				},
+				{
+					"command": "pw.NewChildPage",
+					"group": "0_create@2"
+				},
+				{
+					"command": "pw.NewFolder",
+					"group": "0_create@3"
+				},
+				{
+					"command": "pw.Cut",
+					"group": "1_copy@1"
+				},
+				{
+					"command": "pw.Paste",
+					"group": "1_copy@2"
+				},
+				{
+					"command": "pw.ExportMarkdownFiles",
+					"group": "4_pwIO@1"
+				},
+				{
+					"command": "pw.ExportPersonalWiki",
+					"group": "4_pwIO@2"
+				},
+				{
+					"command": "pw.ImportMarkdownFiles",
+					"group": "4_pwIO@3"
+				},
+				{
+					"command": "pw.Rename",
+					"group": "5_delete@1"
+				},
+				{
+					"command": "pw.Delete",
+					"group": "5_delete@2"
+				},
+				{
+					"command": "pw.SubscribeTags",
+					"when": "view =~ /pw.TagView/",
+					"group": "4_tag"
+				},
+				{
+					"command": "pw.UnsubscribeTags",
+					"when": "view =~ /pw.TagView/",
+					"group": "4_tag"
+				}
+			],
+			"editor/title": [
+				{
+					"command": "pw.LastWikiPage",
+					"when": "sideBarVisible",
+					"group": "1_run"
+				},
+				{
+					"command": "pw.NextWikiPage",
+					"group": "1_run"
+				}
+			],
+			"view/title": [
+				{
+					"command": "pw.SelectWiki",
+					"when": "view =~ /pw.TreeView/",
+					"group": "navigation"
+				},
+				{
+					"command": "pw.SubscribeTags",
+					"when": "view =~ /pw.TagView/",
+					"group": "navigation"
+				},
+				{
+					"command": "pw.UnsubscribeTags",
+					"when": "view =~ /pw.TagView/",
+					"group": "navigation"
+				},
+				{
+					"command": "pw.Search",
+					"when": "view =~ /pw.SearchView/",
+					"group": "navigation"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "pw.InsertWikiLink",
+					"when": "resourceLangId == markdown",
+					"group": "7_insert@1"
+				},
+				{
+					"command": "pw.InsertImage",
+					"when": "resourceLangId == markdown",
+					"group": "7_insert@2"
+				},
+				{
+					"command": "pw.AddTemplate",
+					"when": "resourceLangId == markdown",
+					"group": "8_template@2"
+				},
+				{
+					"command": "pw.InsertTemplate",
+					"when": "resourceLangId == markdown",
+					"group": "8_template@1"
+				},
+				{
+					"command": "pw.DeleteTemplate",
+					"when": "resourceLangId == markdown",
+					"group": "8_template@3"
+				}
+			]
+		},
+		"keybindings": [
+			{
+				"command": "pw.NewPage",
+				"key": "ctrl+alt+n"
+			},
+			{
+				"command": "pw.NewChildPage",
+				"key": "ctrl+alt+c"
+			}
+		],
+		"views": {
+			"personalWiki-explorer": [
+				{
+					"id": "pw.TreeView",
+					"name": "Wikitree"
+				},
+				{
+					"id": "pw.TagView",
+					"name": "Subscribed Tags"
+				},
+				{
+					"id": "pw.SearchView",
+					"name": "Search Results"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "personalWiki-explorer",
+					"title": "Personal Wiki",
+					"icon": "resources/icons/commands/pw_icon.svg"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
@@ -34,9 +343,21 @@
 		"@types/node": "^12.11.7",
 		"@types/vscode": "^1.40.0",
 		"glob": "^7.1.5",
-		"mocha": "^6.2.2",
-		"typescript": "^3.6.4",
+		"mocha": "^7.1.1",
 		"tslint": "^5.20.0",
+		"typescript": "^3.6.4",
 		"vscode-test": "^1.2.2"
+	},
+	"dependencies": {
+		"@types/ftp": "^0.3.30",
+		"@types/mkdirp": "^0.5.2",
+		"@types/rimraf": "^2.0.3",
+		"directory-structure-json": "^1.0.0",
+		"ftp": "^0.3.10",
+		"markdown-it-music": "0.0.13",
+		"markdown-it-plot": "^1.0.3",
+		"markdown-it-smartarrows": "^1.0.1",
+		"node-nlp": "^4.0.2",
+		"readdirp": "^3.3.0"
 	}
 }
