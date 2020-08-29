@@ -11,7 +11,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:pw.SelectWiki"
+		"*"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -381,6 +381,7 @@
 		"ftp": "^0.3.10",
 		"markdown-it-plot": "^1.0.3",
 		"markdown-it-smartarrows": "^1.0.1",
+		"node": "^14.8.0",
 		"node-nlp": "^4.10.5",
 		"readdirp": "^3.4.0",
 		"yaml": "^1.10.0"
