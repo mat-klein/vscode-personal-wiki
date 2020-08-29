@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import * as pwFS from './filesystem';
-import { Color } from 'vscode';
 
 interface Linklist {
     links: Links[];
@@ -211,6 +210,18 @@ export function filePathChanged(oldPath: string, newPath: string) {
                 fs.writeFileSync(element.filepath, content, 'utf8');
             });
             element.workspace = newLinks;*/
+        }
+    });
+
+    promUpdateJSON(newLinklist);
+}
+export function filePathDeleted(path: string) {
+    let newLinklist = getLinklistElement();
+    let newLinks: string[] = [];
+
+    newLinklist.links.forEach((element, index) => {
+        if(element.filepath.toLowerCase() === path.toLowerCase()){
+            newLinklist.links.splice(index, 1);
         }
     });
 

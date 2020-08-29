@@ -72,7 +72,6 @@ export class History {
     }
     public nextPage() {
         if (this.getHistoryIndex() < this.getHistory().length - 1) {
-            console.log(this.getHistoryIndex());
             this.setHistoryIndex(this.getHistoryIndex() + 1);
             return this.getHistory()[this.getHistoryIndex()];
         }

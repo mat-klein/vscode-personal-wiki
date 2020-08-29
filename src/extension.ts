@@ -12,6 +12,7 @@ import * as pwSearchViewProv from './personalwiki/views/searchViewProvider';
 
 import * as history from './personalwiki/core/history';
 import * as search from './personalwiki/core/search';
+import { type } from 'os';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -20,6 +21,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
+
+	//TODO if folder not open in workspace
+	/*if(){
+		vscode.workspace.updateWorkspaceFolders(vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0, null, { uri: vscode.Uri.file(vscode.workspace.getConfiguration('') });
+	}*/
 
 	let wikiHistory = new history.History();
 	let wikiSearch = new search.Search();

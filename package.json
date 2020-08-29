@@ -107,6 +107,11 @@
 				"icon": "$(file-directory-create)"
 			},
 			{
+				"command": "pw.NewJournal",
+				"title": "New Journal",
+				"category": "pw.general"
+			},
+			{
 				"command": "pw.SubscribeTags",
 				"title": "add tag subscription",
 				"category": "pw.tags",
@@ -173,11 +178,6 @@
 				"command": "pw.ExportPersonalWiki",
 				"title": "Export Personal Wiki",
 				"category": "pw.io"
-			},
-			{
-				"command": "pw.TestCommand",
-				"title": "TEST COMMAND",
-				"category": "pw.test"
 			}
 		],
 		"menus": {
@@ -193,6 +193,10 @@
 				{
 					"command": "pw.NewFolder",
 					"group": "0_create@3"
+				},
+				{
+					"command": "pw.NewJournal",
+					"group": "0_create@4"
 				},
 				{
 					"command": "pw.Cut",
@@ -302,6 +306,22 @@
 			{
 				"command": "pw.NewChildPage",
 				"key": "ctrl+alt+c"
+			},
+			{
+				"command": "pw.InsertWikiLink",
+				"key": "ctrl+alt+l"
+			},
+			{
+				"command": "pw.InsertImage",
+				"key": "ctrl+alt+i"
+			},
+			{
+				"command": "pw.InsertTemplate",
+				"key": "ctrl+alt+t"
+			},
+			{
+				"command": "pw.Search",
+				"key": "ctrl+alt+s"
 			}
 		],
 		"views": {
@@ -358,6 +378,7 @@
 		"markdown-it-plot": "^1.0.3",
 		"markdown-it-smartarrows": "^1.0.1",
 		"node-nlp": "^4.0.2",
-		"readdirp": "^3.3.0"
+		"readdirp": "^3.3.0",
+		"yaml": "^1.10.0"
 	}
 }

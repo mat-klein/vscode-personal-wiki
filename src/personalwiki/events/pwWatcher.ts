@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 
 import * as pwFS from '../core/filesystem';
 import * as tag from '../core/tag';
@@ -9,19 +8,11 @@ export function pwWatcherEvents() {
 
     let fsWatcher = vscode.workspace.createFileSystemWatcher("**/*.md", false, false, true);
     fsWatcher.onDidCreate(() => {
-        vscode.window.showInformationMessage("Something was added!"); //In my opinion this should be called
         vscode.commands.executeCommand('pw.RefreshTreeView');
         vscode.commands.executeCommand('pw.RefreshTagView');
         vscode.commands.executeCommand('pw.RefreshSearchView');
     });
     fsWatcher.onDidChange(() => {
-        vscode.window.showInformationMessage("Something has changed!"); //In my opinion this should be called
-        vscode.commands.executeCommand('pw.RefreshTreeView');
-        vscode.commands.executeCommand('pw.RefreshTagView');
-        vscode.commands.executeCommand('pw.RefreshSearchView');
-    });
-    fsWatcher.onDidDelete(() => {
-        vscode.window.showInformationMessage("Something was deleted!"); //In my opinion this should be called
         vscode.commands.executeCommand('pw.RefreshTreeView');
         vscode.commands.executeCommand('pw.RefreshTagView');
         vscode.commands.executeCommand('pw.RefreshSearchView');

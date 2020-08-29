@@ -23,5 +23,4 @@ export function pwListener(history: History) {
 	};
 
 	let _onDidChangeActiveTextEditor = vscode.window.onDidChangeActiveTextEditor(listenerActiveTextEditor);
-	let _onTestEvent = vscode.FileChangeType.Created;
 }

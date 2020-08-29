@@ -6,12 +6,11 @@ import * as pwFS from '../core/filesystem';
 export class TreeViewProvider implements vscode.TreeDataProvider<WikiEntry> {
 	private wikiStruct: vscode.ProviderResult<WikiEntry[]>;
 	private _onDidChangeTreeData: vscode.EventEmitter<WikiEntry | undefined> = new vscode.EventEmitter<WikiEntry | undefined>();
+	readonly onDidChangeTreeData: vscode.Event<WikiEntry | undefined> = this._onDidChangeTreeData.event;
 
 	constructor() {
 		this.wikiStruct = this.getWikiStruct();
 	}
-
-	readonly onDidChangeTreeData: vscode.Event<WikiEntry | undefined> = this._onDidChangeTreeData.event;
 
 	refresh(): void {
 		this.wikiStruct = this.getWikiStruct();
@@ -35,7 +34,9 @@ export class TreeViewProvider implements vscode.TreeDataProvider<WikiEntry> {
 			});
 			return temp;
 		}
-		return Promise.resolve(jsElements(eleArray));
+		
+		let rootEle: WikiEntry[] =  [new WikiEntry(jsObj.element.elementLabel, jsObj.element.elementPath, vscode.TreeItemCollapsibleState.Collapsed, jsElements(eleArray))];
+		return Promise.resolve(rootEle);
 	}
 
 	getTreeItem(element: WikiEntry): WikiEntry | Thenable<WikiEntry> {

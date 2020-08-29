@@ -12,7 +12,7 @@ interface Template {
 }
 
 export function initDefaultTemplate() {
-    let defaultTemp: Template = { templateID: "DefaultTemp", template: "## Wikipage Template\r\n\r\nDescription of Wikipage\r\n\r\n---\r\n\r\n### Wikipage table of content\r\n\r\n[TOC]\r\n\r\n### Wiki Content\r\n\r\nContent of Wikipage\r\n\r\n---\r\n\r\n## Wikipage Tags\r\n\r\n``\r\ndefault\r\n``" };
+    let defaultTemp: Template = { templateID: "DefaultTemp", template: "---\r\nwikitags: ['default']\r\n---\r\n\r\n## Wikipage name\r\n\r\nDescription of Wikipage\r\n\r\n### Wikipage table of content\r\n\r\n[TOC]\r\n\r\n### Wiki Content\r\n\r\nContent of Wikipage " };
     let newTemplates: Templates = { default: "DefaultTemp", templates: [defaultTemp] };
 
     return newTemplates;

@@ -1,7 +1,8 @@
 import * as fs from 'fs';
-import * as vscode from 'vscode'
+import * as yaml from 'yaml';
+import * as vscode from 'vscode';
 
-import * as pwFS from './filesystem'
+import * as pwFS from './filesystem';
 
 interface TagJSON {
     pwTagIdentifier: string;
@@ -20,29 +21,21 @@ export function initDefaultTag(path: string) {
     return newTags;
 }
 
-export function getTagsOfFile(path: string): string[] {
-    let ptIdentifier = String(vscode.workspace.getConfiguration('personalwiki.general').get('pageTagIdentifier'));
-    let content;
+function getTagsOfFile(path: string): string[] {
+    let content = "";
+    let tags: string[] = [];
+
     if (fs.existsSync(path)) {
         content = fs.readFileSync(path, "utf8");
     }
-
-    if (content !== undefined && content.includes(ptIdentifier)) {
-        content = content.substring(content.indexOf(ptIdentifier) + ptIdentifier.length, content.length);
-        content = content.substring(content.indexOf('``') + 2, content.length);
-        content = content.substring(0, content.indexOf('``'));
-        content = content.toLowerCase().replace(/\s+/g, '');
-        content = content.replace(/[~`!#$%\^&*+=\-\[\]\\';,/{}\\":<>\?]/g, '');
-        while (content.includes('||')) {
-            content = content.replace('||', '|');
+    
+    yaml.parseAllDocuments(content).forEach(doc => {
+        if(doc.has('wikitags')){
+            tags = doc.get('wikitags');
         }
-        content = content.replace(/^\|/, '');
-        content = content.replace(/\|$/, '');
-    } else {
-        content = "";
-    }
-
-    return convertTagStrToTagArr(content);
+    });
+    
+    return tags;
 }
 export function getWikifilesWithSub(subscriptionTags: string): string[] {
     let tagJSON: TagJSON = JSON.parse(pwFS.getPWTagJSON());
@@ -167,6 +160,22 @@ export async function updateTagsOfWikipage(path: string) {
         vscode.commands.executeCommand("pw.RefreshTagView");
     }
 }
+export async function updateTagPath(path: string, newPath: string) {
+    let tagJSON: TagJSON = JSON.parse(pwFS.getPWTagJSON());
+    let updateNecessary = false;
+
+    tagJSON.pwTags.forEach(element => {
+        if (element.path.toLowerCase() === path.toLowerCase()) {
+            element.path = newPath;
+            updateNecessary = true;
+        }
+    });
+
+    if(updateNecessary){
+        await promUpdateJSON(tagJSON);
+        vscode.commands.executeCommand("pw.RefreshTagView");
+    }
+}
 export function deleteFileFromTagJSON(path: string) {
     let pwTagJSON = pwFS.getPWTagJSON();
     let tagJSON: TagJSON = JSON.parse(pwTagJSON);
@@ -182,7 +191,7 @@ export function deleteFileFromTagJSON(path: string) {
     promUpdateJSON(tagJSON);
 }
 
-export async function updateTagPageIdentifier(newTagID: string) {
+export async function updateTagIdentifier(newTagID: string) {
     let tagJSON: TagJSON = JSON.parse(pwFS.getPWTagJSON());
     tagJSON.pwTagIdentifier = newTagID;
     tagJSON.pwSubscribedTags = "";
@@ -199,7 +208,7 @@ export async function updateTagConfig() {
     await promUpdateSubscriptions(tagJSON.pwSubscribedTags);
 }
 
-export function convertTagStrToTagArr(tags: string): string[] {
+function convertTagStrToTagArr(tags: string): string[] {
     let tagArr: string[] = [];
 
     while (tags.length > 0) {

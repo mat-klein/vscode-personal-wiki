@@ -49,6 +49,13 @@ export function getPWConfigJSON(): string {
     let content = fs.readFileSync(getPWConfigPath(), 'utf8');
     return content;
 }
+function updatePWConfigJSON(path: string, content: string) {
+    fs.writeFile(path, content, (err) => {
+        if (err) {
+            console.log(err);
+        }
+    });
+}
 export async function pwPathToConfigJSON(path: string) {
     let elements: string[] = [];
     let wikiElement: WikiElement = { elementLabel: "root", elementPath: path, parentDir: "", isDirectory: true, elementChildren: [] };
@@ -98,7 +105,7 @@ export async function pwPathToConfigJSON(path: string) {
     }
     await elementsToJSON(path, wikiElement);
     configJSON.element = wikiElement;
-    updateWikiFile(getPWConfigPath(), JSON.stringify(configJSON, undefined, 2));
+    updatePWConfigJSON(getPWConfigPath(), JSON.stringify(configJSON, undefined, 2));
 
     //TODO timeout workaround entfernen
     return new Promise<any>((resolve, reject) => {
@@ -108,7 +115,7 @@ export async function pwPathToConfigJSON(path: string) {
     });
 }
 
-export function getPWLinkPath(): string {
+function getPWLinkPath(): string {
     let pathLinkJSON = String(vscode.workspace.getConfiguration('personalwiki.general').get('wikiPath'));
     pathLinkJSON = pathLinkJSON.concat(".pwignore/pwLink.json");
     return pathLinkJSON;
@@ -121,7 +128,7 @@ export function updatePWLinkJSON(content: string) {
     fs.writeFileSync(getPWLinkPath(), content, 'utf8');
 }
 
-export function getPWTagPath(): string {
+function getPWTagPath(): string {
     let pathTagJSON = String(vscode.workspace.getConfiguration('personalwiki.general').get('wikiPath'));
     pathTagJSON = pathTagJSON.concat(".pwignore/pwTag.json");
     return pathTagJSON;
@@ -134,7 +141,7 @@ export function updatePWTagJSON(content: string) {
     fs.writeFileSync(getPWTagPath(), content, 'utf8');
 }
 
-export function getPWTemplatePath(): string {
+function getPWTemplatePath(): string {
     let pathTempJSON = String(vscode.workspace.getConfiguration('personalwiki.general').get('wikiPath'));
     pathTempJSON = pathTempJSON.concat(".pwignore/pwTemplates.json");
     return pathTempJSON;
@@ -147,7 +154,7 @@ export function updatePWTemplateJSON(content: string) {
     fs.writeFileSync(getPWTemplatePath(), content, 'utf8');
 }
 
-export function getTempImagePath(): string {
+function getTempImagePath(): string {
     let pathTempImages = String(vscode.workspace.getConfiguration('personalwiki.general').get('wikiPath'));
     pathTempImages = pathTempImages.concat(".pwignore/tempImages/");
 
@@ -205,7 +212,7 @@ export function getFolderOfFile(filePath: string): string {
     return folderPath;
 }
 export function getContentOfFile(path: string): string {
-    let content = fs.readFileSync(path, 'utf8');;
+    let content = fs.readFileSync(path, 'utf8');
     return content;
 }
 
@@ -286,7 +293,7 @@ export function moveWikiItem(oldPath: string, newPath: string) {
     return Promise.resolve(fs.renameSync(oldPath, newPath));
 }
 
-export function pwCreatePage(pageName: string, path: string, wikiPath: string, isChildPage: boolean) {
+export function pwCreatePage(pageName: string, path: string, isChildPage: boolean) {
     if (isPartOfPersonalWiki(path)) {
         if (!isChildPage) {
             if (fs.existsSync(path + pageName + ".md") !== true) {
@@ -329,12 +336,4 @@ export function pwCreateFolder(foldername: string, path: string) {
     if (fs.lstatSync(path) !== undefined && !fs.existsSync(path + "/" + foldername)) {
         fs.mkdirSync(path + "/" + foldername);
     }
-}
-
-function updateWikiFile(path: string, content: string) {
-    fs.writeFile(path, content, (err) => {
-        if (err) {
-            console.log(err);
-        }
-    });
 }

@@ -1,4 +1,3 @@
-import * as readdirp from 'readdirp';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -8,6 +7,7 @@ import * as tag from '../core/tag';
 import * as link from '../core/link';
 import * as pwFS from '../core/filesystem';
 import * as template from '../core/template';
+import * as journal from '../core/journal';
 import * as impExp from '../core/importExport';
 
 import * as tvProv from '../views/tagViewProvider';
@@ -16,7 +16,6 @@ import { History } from '../core/history';
 import { Search } from '../core/search';
 import rimraf = require('rimraf');
 import { resolvePtr } from 'dns';
-import { type } from 'os';
 
 export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
     let pwPath = String(vscode.workspace.getConfiguration('personalwiki.general').get('wikiPath'));
@@ -33,7 +32,7 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
         vscode.window.showOpenDialog(options).then(async resource => {
             if (resource !== undefined) {
                 let folderpath = resource[0].path.substring(1, resource[0].path.length);
-                let folderURI = vscode.Uri.parse("file:///" + folderpath);
+                let folderURI = vscode.Uri.file(folderpath);
 
                 if (vscode.workspace.getWorkspaceFolder(folderURI) !== undefined) {
                     await promUpdatePersonalWikiPath(folderpath);
@@ -68,7 +67,7 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
                         await promUpdatePersonalWikiPath(folderpath);
                         pwPath = String(vscode.workspace.getConfiguration('personalwiki.general').get('wikiPath'));
                         pwFS.initPersonalWiki(folderpath);
-                        pwFS.pwCreatePage("main", folderpath + '/', pwPath, false);
+                        pwFS.pwCreatePage("main", folderpath + '/', false);
 
                         await tag.updateTagConfig();
                         await template.updateTemplateConfig();
@@ -89,7 +88,26 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
         let mdEditors: number[] = [];
         let fileOpend = false;
 
-        if (resource !== undefined && fs.lstatSync(resource).isFile()) {
+        function openInPreview(): boolean {
+            let config = vscode.workspace.getConfiguration('workbench').inspect('editorAssociations');
+            let inPreview = false;
+            if (config?.globalValue !== undefined) {
+                let globVal: Object[] = Object(config.globalValue);
+                globVal.forEach(ele => {
+                    if (ele.hasOwnProperty('viewType')) {
+                        let json = JSON.parse(JSON.stringify(ele));
+                        if (json.viewType === 'vscode.markdown.preview.editor') {
+                            inPreview = true;
+                        }
+                    }
+                });
+            }
+            return inPreview;
+        }
+
+        // 
+        if (resource !== undefined && fs.lstatSync(resource).isFile() && !openInPreview()) {
+            // Durchsucht die bereits geöffneten Dateien der aktiven Texteditoren
             vscode.workspace.textDocuments.forEach(knownTextDocuments => {
                 if (!fileOpend) {
                     if (knownTextDocuments.fileName.replace(/\\/g, '/').includes(resource)) {
@@ -113,87 +131,148 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
                 }
             });
 
+            // Öffnet die Wikiseite, in dem sichtbaren Texteditor
             if (!fileOpend && vscode.window.visibleTextEditors.length > 0) {
                 vscode.window.visibleTextEditors.forEach(async (editor) => {
                     if (!fileOpend) {
                         await vscode.window.showTextDocument(editor.document, editor.viewColumn);
-                        vscode.window.showTextDocument(vscode.Uri.parse("file:///" + resource));
+                        vscode.window.showTextDocument(vscode.Uri.file(resource));
                         fileOpend = true;
                     }
                 });
             } else if (!fileOpend) {
-                vscode.window.showTextDocument(vscode.Uri.parse("file:///" + resource));
+                vscode.window.showTextDocument(vscode.Uri.file(resource));
             }
+        } else if (resource !== undefined && fs.lstatSync(resource).isFile()) {
+            vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.file(resource));
         }
     });
 
     let pwNewPage = vscode.commands.registerCommand('pw.NewPage', async (resource) => {
-        const input = await vscode.window.showInputBox({
-            placeHolder: "enter pagename ...",
-            validateInput: (text: string): string | undefined => {
-                if (text.match(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g)) {
-                    return 'Wikipages can not contain special characters';
+        if (resource !== undefined && !journal.isJournalPath(resource.wikiTreePath)) {
+            const input = await vscode.window.showInputBox({
+                placeHolder: "enter pagename ...",
+                validateInput: (text: string): string | undefined => {
+                    if (text.match(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g)) {
+                        return 'Wikipages can not contain special characters';
+                    } else {
+                        return undefined;
+                    }
+                }
+            });
+
+            if (input !== undefined) {
+                if (pwFS.isFolder(resource.wikiTreePath)) {
+                    pwFS.pwCreatePage(input, resource.wikiTreePath, false);
                 } else {
-                    return undefined;
+                    pwFS.pwCreatePage(input, pwFS.getFolderOfFile(resource.wikiTreePath), false);
                 }
             }
-        });
-
-        if (input !== undefined) {
-            if (resource !== undefined) {
-                if (pwFS.isFolder(resource.wikiTreePath)) {
-                    pwFS.pwCreatePage(input, resource.wikiTreePath, pwPath, false);
-                } else {
-                    pwFS.pwCreatePage(input, pwFS.getFolderOfFile(resource.wikiTreePath), pwPath, false);
-                }
+        } else if (resource !== undefined && journal.isJournalPath(resource.wikiTreePath)) {
+            if (pwFS.isFolder(resource.wikiTreePath)) {
+                journal.createJournalPage(resource.wikiTreePath);
             } else {
-                if (vscode.window.activeTextEditor?.document.uri.path !== undefined) {
+                journal.createJournalPage(pwFS.getFolderOfFile(resource.wikiTreePath));
+            }
+        } else {
+            if (vscode.window.activeTextEditor?.document.uri.path !== undefined) {
+                if (!journal.isJournalPath(vscode.window.activeTextEditor?.document.uri.path)) {
+                    const input = await vscode.window.showInputBox({
+                        placeHolder: "enter pagename ...",
+                        validateInput: (text: string): string | undefined => {
+                            if (text.match(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g)) {
+                                return 'Wikipages can not contain special characters';
+                            } else {
+                                return undefined;
+                            }
+                        }
+                    });
+
+                    if (input !== undefined) {
+                        let currentDocumentPath = "" + vscode.window.activeTextEditor?.document.uri.path;
+                        currentDocumentPath = currentDocumentPath?.substring(1, currentDocumentPath.length);
+                        if (vscode.window.activeTextEditor?.document.languageId === "markdown" && pwFS.isPartOfPersonalWiki(currentDocumentPath)) {
+                            resource = { wikiTreePath: currentDocumentPath };
+                            pwFS.pwCreatePage(input, pwFS.getFolderOfFile(resource.wikiTreePath), false);
+                        } else {
+                            vscode.window.showInformationMessage("No Wikifolder or Wikipage selected/active");
+                        }
+                    }
+                } else {
                     let currentDocumentPath = "" + vscode.window.activeTextEditor?.document.uri.path;
                     currentDocumentPath = currentDocumentPath?.substring(1, currentDocumentPath.length);
                     if (vscode.window.activeTextEditor?.document.languageId === "markdown" && pwFS.isPartOfPersonalWiki(currentDocumentPath)) {
-                        resource = { wikiTreePath: currentDocumentPath };
-                        pwFS.pwCreatePage(input, pwFS.getFolderOfFile(resource.wikiTreePath), pwPath, false);
+                        journal.createJournalPage(pwFS.getFolderOfFile(currentDocumentPath));
                     } else {
                         vscode.window.showInformationMessage("No Wikifolder or Wikipage selected/active");
                     }
-                } else {
-                    vscode.window.showInformationMessage("No Wikifolder or Wikipage selected/active");
                 }
+            } else {
+                vscode.window.showInformationMessage("No Wikifolder or Wikipage selected/active");
             }
         }
     });
     let pwNewChildPage = vscode.commands.registerCommand('pw.NewChildPage', async (resource) => {
-        const input = await vscode.window.showInputBox({
-            placeHolder: "enter pagename ...",
-            validateInput: (text: string): string | undefined => {
-                if (text.match(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g)) {
-                    return 'Wikipages can not contain special characters';
+        if (resource !== undefined && !journal.isJournalPath(resource.wikiTreePath)) {
+            const input = await vscode.window.showInputBox({
+                placeHolder: "enter pagename ...",
+                validateInput: (text: string): string | undefined => {
+                    if (text.match(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g)) {
+                        return 'Wikipages can not contain special characters';
+                    } else {
+                        return undefined;
+                    }
+                }
+            });
+
+            if (input !== undefined) {
+                if (pwFS.isFolder(resource.wikiTreePath)) {
+                    pwFS.pwCreatePage(input, resource.wikiTreePath, false);
                 } else {
-                    return undefined;
+                    pwFS.pwCreatePage(input, resource.wikiTreePath, true);
                 }
             }
-        });
-
-        if (input !== undefined) {
-            if (resource !== undefined) {
-                if (pwFS.isFolder(resource.wikiTreePath)) {
-                    pwFS.pwCreatePage(input, resource.wikiTreePath, pwPath, false);
-                } else {
-                    pwFS.pwCreatePage(input, resource.wikiTreePath, pwPath, true);
-                }
+        } else if (resource !== undefined && journal.isJournalPath(resource.wikiTreePath)) {
+            if (pwFS.isFolder(resource.wikiTreePath)) {
+                journal.createJournalPage(resource.wikiTreePath);
             } else {
-                if (vscode.window.activeTextEditor?.document.uri.path !== undefined) {
+                journal.createJournalPage(pwFS.getFolderOfFile(resource.wikiTreePath));
+            }
+        } else {
+            if (vscode.window.activeTextEditor?.document.uri.path !== undefined) {
+                if (!journal.isJournalPath(vscode.window.activeTextEditor?.document.uri.path)) {
+                    const input = await vscode.window.showInputBox({
+                        placeHolder: "enter pagename ...",
+                        validateInput: (text: string): string | undefined => {
+                            if (text.match(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g)) {
+                                return 'Wikipages can not contain special characters';
+                            } else {
+                                return undefined;
+                            }
+                        }
+                    });
+
+                    if (input !== undefined) {
+                        let currentDocumentPath = "" + vscode.window.activeTextEditor?.document.uri.path;
+                        currentDocumentPath = currentDocumentPath?.substring(1, currentDocumentPath.length);
+                        if (vscode.window.activeTextEditor?.document.languageId === "markdown" && pwFS.isPartOfPersonalWiki(currentDocumentPath)) {
+                            resource = { wikiTreePath: currentDocumentPath };
+                            pwFS.pwCreatePage(input, resource.wikiTreePath, true);
+                        } else {
+                            vscode.window.showInformationMessage("No Wikifolder or Wikipage selected/active");
+                        }
+                    }
+                } else {
                     let currentDocumentPath = "" + vscode.window.activeTextEditor?.document.uri.path;
                     currentDocumentPath = currentDocumentPath?.substring(1, currentDocumentPath.length);
                     if (vscode.window.activeTextEditor?.document.languageId === "markdown" && pwFS.isPartOfPersonalWiki(currentDocumentPath)) {
-                        resource = { wikiTreePath: currentDocumentPath };
-                        pwFS.pwCreatePage(input, resource.wikiTreePath, pwPath, true);
+                        journal.createJournalPage(pwFS.getFolderOfFile(currentDocumentPath));
                     } else {
                         vscode.window.showInformationMessage("No Wikifolder or Wikipage selected/active");
                     }
-                } else {
-                    vscode.window.showInformationMessage("No Wikifolder or Wikipage selected/active");
                 }
+            } else {
+                vscode.window.showInformationMessage("No Wikifolder or Wikipage selected/active");
             }
         }
     });
@@ -220,7 +299,7 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
     });
 
     let pwCutWikiItem = vscode.commands.registerCommand('pw.Cut', (resource) => {
-        if (resource !== undefined) {
+        if (resource !== undefined && resource.wikiTreePath.toLowerCase() !== pwPath.toLowerCase()) {
             itemToMove = resource.wikiTreePath;
         }
     });
@@ -257,8 +336,13 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
                     changedLinks.forEach(linkEle => {
                         if (linkEle.oldLink !== "" && linkEle.newLink !== "") {
                             link.linkChanged(linkEle.oldLink, linkEle.newLink);
+                            tag.updateTagPath(linkEle.oldLink, linkEle.newLink);
                         }
                     });
+
+                    itemToMove = "";
+                    wikiHistroy.clearHistory();
+                    wikiSearch.clearSearch();
                 } else if (pwFS.isFolder(itemToMove) && !pwFS.isFolder(resource.wikiTreePath) && !fs.existsSync(pwFS.getFolderOfFile(resource.wikiTreePath) + pwFS.getFolderName(itemToMove))) {
                     let allPath: string[] = pwFS.getAllFilePathOfDir(itemToMove);
                     let changedLinks: [{ oldLink: string, newLink: string }] = [{ oldLink: "", newLink: "" }];
@@ -275,16 +359,27 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
                     changedLinks.forEach(linkEle => {
                         if (linkEle.oldLink !== "" && linkEle.newLink !== "") {
                             link.linkChanged(linkEle.oldLink, linkEle.newLink);
+                            tag.updateTagPath(linkEle.oldLink, linkEle.newLink);
                         }
                     });
+
+                    itemToMove = "";
+                    wikiHistroy.clearHistory();
+                    wikiSearch.clearSearch();
                 } else if (!pwFS.isFolder(itemToMove) && pwFS.isFolder(resource.wikiTreePath) && !fs.existsSync(resource.wikiTreePath + pwFS.getFileName(itemToMove, true))) {
                     link.filePathChanged(itemToMove, resource.wikiTreePath + pwFS.getFileName(itemToMove, true));
                     link.linkChanged(itemToMove, resource.wikiTreePath + pwFS.getFileName(itemToMove, true));
+                    tag.updateTagPath(itemToMove, resource.wikiTreePath + pwFS.getFileName(itemToMove, true));
 
                     pwFS.moveWikiItem(itemToMove, resource.wikiTreePath + pwFS.getFileName(itemToMove, true));
+
+                    itemToMove = "";
+                    wikiHistroy.clearHistory();
+                    wikiSearch.clearSearch();
                 } else if (!pwFS.isFolder(itemToMove) && !pwFS.isFolder(resource.wikiTreePath) && !fs.existsSync(pwFS.getFolderOfFile(resource.wikiTreePath) + pwFS.getFileName(itemToMove, true))) {
                     link.filePathChanged(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + pwFS.getFileName(itemToMove, true));
                     link.linkChanged(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + pwFS.getFileName(itemToMove, true));
+                    tag.updateTagPath(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + pwFS.getFileName(itemToMove, true));
 
                     pwFS.moveWikiItem(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + pwFS.getFileName(itemToMove, true));
                 } else {
@@ -299,15 +394,59 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
                         }
                     });
 
-                    let type = ".md";
-                    if (pwFS.isFolder(itemToMove)) {
-                        type = "/";
-                    }
+                    if (input !== undefined) {
+                        if (pwFS.isFolder(itemToMove) && pwFS.isFolder(resource.wikiTreePath) && !fs.existsSync(resource.wikiTreePath + input)) {
+                            let allPath: string[] = pwFS.getAllFilePathOfDir(itemToMove);
+                            let changedLinks: [{ oldLink: string, newLink: string }] = [{ oldLink: "", newLink: "" }];
 
-                    if (pwFS.isFolder(resource.wikiTreePath)) {
-                        pwFS.moveWikiItem(itemToMove, resource.wikiTreePath + input + type);
-                    } else {
-                        pwFS.moveWikiItem(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + input + type);
+                            allPath.forEach(element => {
+                                let newPath = resource.wikiTreePath + input + '/' + element.substring(itemToMove.length, element.length);
+
+                                link.filePathChanged(element, newPath);
+                                changedLinks.push({ oldLink: element, newLink: newPath });
+                            });
+
+                            await pwFS.moveWikiItem(itemToMove, resource.wikiTreePath + input);
+
+                            changedLinks.forEach(linkEle => {
+                                if (linkEle.oldLink !== "" && linkEle.newLink !== "") {
+                                    link.linkChanged(linkEle.oldLink, linkEle.newLink);
+                                    tag.updateTagPath(linkEle.oldLink, linkEle.newLink);
+                                }
+                            });
+                        } else if (pwFS.isFolder(itemToMove) && !pwFS.isFolder(resource.wikiTreePath) && !fs.existsSync(pwFS.getFolderOfFile(resource.wikiTreePath) + input)) {
+                            let allPath: string[] = pwFS.getAllFilePathOfDir(itemToMove);
+                            let changedLinks: [{ oldLink: string, newLink: string }] = [{ oldLink: "", newLink: "" }];
+
+                            allPath.forEach(element => {
+                                let newPath = pwFS.getFolderOfFile(resource.wikiTreePath) + input + '/' + element.substring(itemToMove.length, element.length);
+
+                                link.filePathChanged(element, newPath);
+                                changedLinks.push({ oldLink: element, newLink: newPath });
+                            });
+                            await pwFS.moveWikiItem(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + input);
+
+                            changedLinks.forEach(linkEle => {
+                                if (linkEle.oldLink !== "" && linkEle.newLink !== "") {
+                                    link.linkChanged(linkEle.oldLink, linkEle.newLink);
+                                    tag.updateTagPath(linkEle.oldLink, linkEle.newLink);
+                                }
+                            });
+                        } else if (!pwFS.isFolder(itemToMove) && pwFS.isFolder(resource.wikiTreePath) && !fs.existsSync(resource.wikiTreePath + input + '.md')) {
+                            link.filePathChanged(itemToMove, resource.wikiTreePath + input + '.md');
+                            link.linkChanged(itemToMove, resource.wikiTreePath + input + '.md');
+                            tag.updateTagPath(itemToMove, resource.wikiTreePath + input + '.md');
+
+                            pwFS.moveWikiItem(itemToMove, resource.wikiTreePath + input + '.md');
+                        } else if (!pwFS.isFolder(itemToMove) && !pwFS.isFolder(resource.wikiTreePath) && !fs.existsSync(pwFS.getFolderOfFile(resource.wikiTreePath) + input + '.md')) {
+                            link.filePathChanged(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + input + '.md');
+                            link.linkChanged(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + input + '.md');
+                            tag.updateTagPath(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + input + '.md');
+
+                            pwFS.moveWikiItem(itemToMove, pwFS.getFolderOfFile(resource.wikiTreePath) + input + '.md');
+                        } else {
+                            vscode.window.showInformationMessage('Entered file or directory already exists!');
+                        }
                     }
                 }
 
@@ -321,10 +460,50 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
             }
         }
     });
-    let pwRenameWikiItem = vscode.commands.registerCommand('pw.Rename', (resource) => {
+    let pwRenameWikiItem = vscode.commands.registerCommand('pw.Rename', async (resource) => {
         if (resource !== undefined) {
-            console.log(resource.wikiTreePath);
+            const input = await vscode.window.showInputBox({
+                placeHolder: "Already exists! Please enter new name ...",
+                validateInput: (text: string): string | undefined => {
+                    if (text.match(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g) && !text.match(/ /g)) {
+                        return 'Can not contain special characters';
+                    } else {
+                        return undefined;
+                    }
+                }
+            });
 
+            if (input !== undefined) {
+                if (pwFS.isFolder(resource.wikiTreePath) && !fs.existsSync(resource.wikiTreePath + input)) {
+                    let allPath: string[] = pwFS.getAllFilePathOfDir(resource.wikiTreePath);
+                    let changedLinks: [{ oldLink: string, newLink: string }] = [{ oldLink: "", newLink: "" }];
+                    let renamedPath: string = resource.wikiTreePath;
+                    renamedPath = renamedPath.substring(0, renamedPath.lastIndexOf('/'));
+                    renamedPath = renamedPath.substring(0, renamedPath.lastIndexOf('/')+1)+input+'/';
+
+                    allPath.forEach(element => {
+                        let newPath = renamedPath + element.substring(resource.wikiTreePath.length, element.length);
+                        console.log(newPath);
+                        link.filePathChanged(element, newPath);
+                        changedLinks.push({ oldLink: element, newLink: newPath });
+                    });
+
+                    fs.renameSync(resource.wikiTreePath, renamedPath);
+
+                    changedLinks.forEach(linkEle => {
+                        if (linkEle.oldLink !== "" && linkEle.newLink !== "") {
+                            link.linkChanged(linkEle.oldLink, linkEle.newLink);
+                            tag.updateTagPath(linkEle.oldLink, linkEle.newLink);
+                        }
+                    });
+                } else if (!fs.existsSync(resource.wikiTreePath + input + '.md')) {
+                    link.filePathChanged(resource.wikiTreePath, pwFS.getFolderOfFile(resource.wikiTreePath) + input + '.md');
+                    link.linkChanged(resource.wikiTreePath, pwFS.getFolderOfFile(resource.wikiTreePath) + input + '.md');
+                    tag.updateTagPath(resource.wikiTreePath, pwFS.getFolderOfFile(resource.wikiTreePath) + input + '.md');
+
+                    fs.renameSync(resource.wikiTreePath, pwFS.getFolderOfFile(resource.wikiTreePath) + input + '.md');
+                }
+            }
         }
     });
     let pwDeleteWikiItem = vscode.commands.registerCommand('pw.Delete', async (resource) => {
@@ -336,6 +515,7 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
 
                 allFiles.forEach(file => {
                     tag.deleteFileFromTagJSON(file);
+                    link.filePathDeleted(file);
                 });
                 wikiHistroy.clearHistory();
                 wikiSearch.clearSearch();
@@ -347,6 +527,7 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
                 fs.unlinkSync(resource.wikiTreePath);
 
                 tag.deleteFileFromTagJSON(resource.wikiTreePath);
+                link.filePathDeleted(resource.wikiTreePath)
                 wikiHistroy.clearHistory();
                 wikiSearch.clearSearch();
 
@@ -398,7 +579,7 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
         });
 
         if (input !== undefined) {
-            await tag.updateTagPageIdentifier(input);
+            await tag.updateTagIdentifier(input);
 
             vscode.commands.executeCommand('pw.RefreshTagView');
             vscode.commands.executeCommand('pw.RefreshSearchView');
@@ -609,7 +790,7 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
                     let panOpt = await vscode.window.showInputBox({
                         placeHolder: "enter pandoc options ...",
                         validateInput: (text: string): string | undefined => {
-                            if (text.match(/[~`!#$%\^&*+=\[\]\\';,/{}|\\":<>\?]/g)) {
+                            if (text.match(/[~`!#$%\^&*+\[\]\\';,{}|\\"<>\?]/g)) {
                                 return 'Wikipages can not contain special characters';
                             } else {
                                 return undefined;
@@ -656,7 +837,7 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
                 let panOpt = await vscode.window.showInputBox({
                     placeHolder: "enter pandoc options ...",
                     validateInput: (text: string): string | undefined => {
-                        if (text.match(/[~`!#$%\^&*+=\[\]\\';,/{}|\\":<>\?]/g)) {
+                        if (text.match(/[~`!#$%\^&*+\[\]\\';,{}|\\"<>\?]/g)) {
                             return 'enter valid pandoc options';
                         } else {
                             return undefined;
@@ -682,6 +863,33 @@ export function pwRegisterCommands(wikiHistroy: History, wikiSearch: Search) {
                 }
             }
         });
+    });
+
+    let pwNewJournal = vscode.commands.registerCommand('pw.NewJournal', async (resource) => {
+        if (resource !== undefined) {
+            const input = await vscode.window.showInputBox({
+                placeHolder: "enter pagename ...",
+                validateInput: (text: string): string | undefined => {
+                    if (text.match(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g)) {
+                        return 'Wikipages can not contain special characters';
+                    } else {
+                        return undefined;
+                    }
+                }
+            });
+
+            if (input !== undefined && !journal.isJournalPath(resource.wikiTreePath) && !fs.existsSync(resource.wikiTreePath + "pwj_" + input)) {
+                if (pwFS.isFolder(resource.wikiTreePath)) {
+                    journal.createNewJournal(resource.wikiTreePath, input);
+
+                    vscode.commands.executeCommand('pw.RefreshTreeView');
+                } else {
+                    journal.createNewJournal(pwFS.getFolderOfFile(resource.wikiTreePath), input);
+
+                    vscode.commands.executeCommand('pw.RefreshTreeView');
+                }
+            }
+        }
     });
 
     function promUpdatePersonalWikiPath(newPWpath: string) {
