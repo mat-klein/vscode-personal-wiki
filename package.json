@@ -2,9 +2,10 @@
 	"name": "personalwiki",
 	"displayName": "PersonalWiki",
 	"description": "Personal Wiki with Markdown",
-	"version": "0.0.1",
+	"version": "0.0.4",
+	"publisher": "mat-klein",
 	"engines": {
-		"vscode": "^1.40.0"
+		"vscode": "^1.48.0"
 	},
 	"categories": [
 		"Other"
@@ -350,6 +351,10 @@
 			]
 		}
 	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/mat-klein/vscode-personal-wiki.git"
+	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
@@ -358,27 +363,26 @@
 		"test": "node ./out/test/runTest.js"
 	},
 	"devDependencies": {
-		"@types/glob": "^7.1.1",
+		"@types/glob": "^7.1.3",
 		"@types/mocha": "^5.2.7",
-		"@types/node": "^12.11.7",
-		"@types/vscode": "^1.40.0",
+		"@types/node": "^12.12.54",
+		"@types/vscode": "^1.48.0",
 		"glob": "^7.1.5",
-		"mocha": "^7.1.1",
+		"mocha": "^7.2.0",
 		"tslint": "^5.20.0",
-		"typescript": "^3.6.4",
-		"vscode-test": "^1.2.2"
+		"typescript": "^3.9.7",
+		"vscode-test": "^1.4.0"
 	},
 	"dependencies": {
-		"@types/ftp": "^0.3.30",
+		"@types/ftp": "^0.3.31",
 		"@types/mkdirp": "^0.5.2",
-		"@types/rimraf": "^2.0.3",
+		"@types/rimraf": "^2.0.4",
 		"directory-structure-json": "^1.0.0",
 		"ftp": "^0.3.10",
-		"markdown-it-music": "0.0.13",
 		"markdown-it-plot": "^1.0.3",
 		"markdown-it-smartarrows": "^1.0.1",
-		"node-nlp": "^4.0.2",
-		"readdirp": "^3.3.0",
+		"node-nlp": "^4.10.5",
+		"readdirp": "^3.4.0",
 		"yaml": "^1.10.0"
 	}
 }
