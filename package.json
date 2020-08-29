@@ -11,7 +11,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onStartupFinished"
+		"onCommand:pw.SelectWiki"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
